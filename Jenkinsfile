@@ -5,7 +5,6 @@ pipeline {
         DOCKER_IMAGE = "sriranjani2004/flask-app"
         DOCKER_CREDENTIALS = "docker-hub"
         GIT_REPO = "git@github.com:sriranjani2004/assignment2_jenkins.git"
-        SSH_CREDENTIALS = "github-credentials"
         REMOTE_SERVER = "192.168.198.53"
         REMOTE_USER = "ariv"
     }
@@ -40,7 +39,6 @@ pipeline {
             steps {
                 script {
                     withDockerRegistry(credentialsId: DOCKER_CREDENTIALS, url: '') {
-                        sh "docker login -u your-dockerhub-username -p your-dockerhub-password"
                         sh "docker push ${DOCKER_IMAGE}:latest"
                     }
                 }
@@ -50,16 +48,14 @@ pipeline {
         stage('Deploy Application') {
             steps {
                 script {
-                    sshagent([SSH_CREDENTIALS]) {
-                        sh """
-                            ssh ${REMOTE_USER}@${REMOTE_SERVER} '
-                            docker pull ${DOCKER_IMAGE}:latest &&
-                            docker stop flask-app || true &&
-                            docker rm flask-app || true &&
-                            docker run -d -p 5000:5000 --name flask-app ${DOCKER_IMAGE}:latest
-                            '
-                        """
-                    }
+                    sh """
+                        ssh ${REMOTE_USER}@${REMOTE_SERVER} '
+                        docker pull ${DOCKER_IMAGE}:latest &&
+                        docker stop flask-app || true &&
+                        docker rm flask-app || true &&
+                        docker run -d -p 5000:5000 --name flask-app ${DOCKER_IMAGE}:latest
+                        '
+                    """
                 }
             }
         }
