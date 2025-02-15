@@ -1,71 +1,63 @@
 pipeline {
     agent any
 
+    tools {
+        python "Python3" // Ensure Jenkins uses the installed Python
+    }
+
     environment {
-        DOCKER_IMAGE = "sriranjani2004/flask-app"
-        DOCKER_CREDENTIALS = "docker-hub"
-        GIT_REPO = "https://github.com/sriranjani2004/assignment2_jenkins.git"
+        IMAGE_NAME = "sriranjani2809/flask-app"
+        CONTAINER_NAME = "eloquent_mirzakhani"
     }
 
     stages {
-        stage('Checkout Code') {
+        stage('Check Docker') {
             steps {
-                script {
-                    checkout scm
-                }
+                sh 'docker version'
             }
         }
 
-        stage('Verify Docker Access') {
+        stage('Clone Repository') {
             steps {
-                script {
-                    sh "docker --version || { echo 'Docker is not installed or not accessible'; exit 1; }"
-                }
+                git url: 'https://github.com/sriranjani/assignment2_jenkins'
             }
         }
 
-        stage('Build Docker Image') {
+        stage('Install Dependencies') {
             steps {
-                script {
-                    sh """
-                        echo "Building Docker Image..."
-                        docker build -t ${DOCKER_IMAGE}:latest .
-                    """
-                }
+                sh 'pip install -r requirements.txt'
             }
         }
 
         stage('Run Tests') {
             steps {
-                script {
-                    sh """
-                        echo "Running Unit Tests..."
-                        docker run --rm ${DOCKER_IMAGE}:latest python -m unittest test_app.py || { echo 'Tests failed'; exit 1; }
-                    """
-                }
+                sh 'python -m unittest discover tests'
             }
         }
 
-        stage('Push Image to Docker Hub') {
+        stage('Build Docker Image') {
             steps {
-                script {
-                    withDockerRegistry(credentialsId: DOCKER_CREDENTIALS, url: '') {
-                        sh """
-                            echo "Pushing Docker Image to Docker Hub..."
-                            docker push ${DOCKER_IMAGE}:latest
-                        """
-                    }
-                }
+                sh 'docker build -t ${IMAGE_NAME}:latest .'
+            }
+        }
+
+        stage('Deploy Container') {
+            steps {
+                sh '''
+                    docker stop ${CONTAINER_NAME} || true
+                    docker rm ${CONTAINER_NAME} || true
+                    docker run -d -p 5000:5000 --name ${CONTAINER_NAME} ${IMAGE_NAME}:latest
+                '''
             }
         }
     }
 
     post {
-        success {
-            echo "✅ Pipeline Execution Successful!"
+        always {
+            echo "✅ Pipeline Execution Completed"
         }
         failure {
-            echo "❌ Pipeline Execution Failed!"
+            echo "❌ Build Failed!"
         }
     }
 }
