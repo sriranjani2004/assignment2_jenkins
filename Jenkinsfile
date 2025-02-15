@@ -4,9 +4,7 @@ pipeline {
     environment {
         DOCKER_IMAGE = "sriranjani2004/flask-app"
         DOCKER_CREDENTIALS = "docker-hub"
-        GIT_REPO = "git@github.com:sriranjani2004/assignment2_jenkins.git"
-        REMOTE_SERVER = "192.168.198.53"
-        REMOTE_USER = "ariv"
+        GIT_REPO = "https://github.com/sriranjani2004/assignment2_jenkins.git"
     }
 
     stages {
@@ -33,9 +31,6 @@ pipeline {
         }
 
         stage('Push Image to Docker Hub') {
-            when {
-                expression { currentBuild.resultIsBetterOrEqualTo('SUCCESS') }
-            }
             steps {
                 script {
                     withDockerRegistry(credentialsId: DOCKER_CREDENTIALS, url: '') {
@@ -44,29 +39,14 @@ pipeline {
                 }
             }
         }
-
-        stage('Deploy Application') {
-            steps {
-                script {
-                    sh """
-                        ssh ${REMOTE_USER}@${REMOTE_SERVER} '
-                        docker pull ${DOCKER_IMAGE}:latest &&
-                        docker stop flask-app || true &&
-                        docker rm flask-app || true &&
-                        docker run -d -p 5000:5000 --name flask-app ${DOCKER_IMAGE}:latest
-                        '
-                    """
-                }
-            }
-        }
     }
 
     post {
         success {
-            echo "Deployment Successful!"
+            echo "Pipeline Execution Successful!"
         }
         failure {
-            echo "Deployment Failed!"
+            echo "Pipeline Execution Failed!"
         }
     }
 }
