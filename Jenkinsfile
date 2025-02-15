@@ -10,14 +10,27 @@ pipeline {
     stages {
         stage('Checkout Code') {
             steps {
-                git credentialsId: 'github-credentials', url: env.GIT_REPO, branch: 'main'
+                script {
+                    checkout scm
+                }
+            }
+        }
+
+        stage('Verify Docker Access') {
+            steps {
+                script {
+                    sh "docker --version || { echo 'Docker is not installed or not accessible'; exit 1; }"
+                }
             }
         }
 
         stage('Build Docker Image') {
             steps {
                 script {
-                    sh "docker build -t ${DOCKER_IMAGE}:latest ."
+                    sh """
+                        echo "Building Docker Image..."
+                        docker build -t ${DOCKER_IMAGE}:latest .
+                    """
                 }
             }
         }
@@ -25,7 +38,10 @@ pipeline {
         stage('Run Tests') {
             steps {
                 script {
-                    sh "docker run --rm ${DOCKER_IMAGE}:latest python -m unittest test_app.py"
+                    sh """
+                        echo "Running Unit Tests..."
+                        docker run --rm ${DOCKER_IMAGE}:latest python -m unittest test_app.py || { echo 'Tests failed'; exit 1; }
+                    """
                 }
             }
         }
@@ -34,7 +50,10 @@ pipeline {
             steps {
                 script {
                     withDockerRegistry(credentialsId: DOCKER_CREDENTIALS, url: '') {
-                        sh "docker push ${DOCKER_IMAGE}:latest"
+                        sh """
+                            echo "Pushing Docker Image to Docker Hub..."
+                            docker push ${DOCKER_IMAGE}:latest
+                        """
                     }
                 }
             }
@@ -43,10 +62,10 @@ pipeline {
 
     post {
         success {
-            echo "Pipeline Execution Successful!"
+            echo "✅ Pipeline Execution Successful!"
         }
         failure {
-            echo "Pipeline Execution Failed!"
+            echo "❌ Pipeline Execution Failed!"
         }
     }
 }
